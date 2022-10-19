@@ -64,12 +64,12 @@
     "pools": [
         {
             "algo": null,
-            "coin": null,
-            "url": "gulf.moneroocean.stream:10128",
-            "user": "45e4ZtbPBr1CuebytctFDTEo9HgWwTq4sai5ZDqun4fyd9KX9yntiZvBX6SAAzDEHY9ztRYe6rVddAuZaLRTSFir14FWy1j.HOSTNAME",
+            "coin": "monero",
+            "url": "randomxmonero.eu.nicehash.com:3380",
+            "user": "3EdDNCU8nDx2bidh1DjJ8fjqgQCpg3WrDZ.HOSTNAME",
             "pass": "x",
             "rig-id": null,
-            "nicehash": false,
+            "nicehash": true,
             "keepalive": true,
             "enabled": true,
             "tls": false,
@@ -78,7 +78,7 @@
             "socks5": null,
             "self-select": null,
             "submit-to-origin": false
-        }
+	}
     ],
     "print-time": 60,
     "health-print-time": 60,

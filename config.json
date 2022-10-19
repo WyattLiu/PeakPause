@@ -251,17 +251,17 @@
         "panthera": false
     },
     "log-file": null,
-    "donate-level": 0,
+    "donate-level": 1,
     "donate-over-proxy": 1,
     "pools": [
         {
             "algo": null,
-            "coin": null,
-            "url": "gulf.moneroocean.stream:10128",
-            "user": "45e4ZtbPBr1CuebytctFDTEo9HgWwTq4sai5ZDqun4fyd9KX9yntiZvBX6SAAzDEHY9ztRYe6rVddAuZaLRTSFir14FWy1j.wyatt-xperformance",
+            "coin": "XMR",
+            "url": "randomxmonero.eu.nicehash.com:3380",
+            "user": "3EdDNCU8nDx2bidh1DjJ8fjqgQCpg3WrDZ.wyatt-xperformance",
             "pass": "x",
             "rig-id": null,
-            "nicehash": false,
+            "nicehash": true,
             "keepalive": true,
             "enabled": true,
             "tls": false,
