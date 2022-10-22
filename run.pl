@@ -19,7 +19,10 @@ sub if_temp_too_high {
 	PeerPort => '48910',   
 	Proto => 'tcp',   
 	);   
-	die "Could not create socket: $!n" unless $socket;
+	if(not $socket) {
+		print "Failed to connect\n";
+		return 0;	
+	}
 
 	my $data = "temp";
 	chomp $data;
