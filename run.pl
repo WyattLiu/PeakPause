@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use IO::Socket;
 
 my $off_peak_start = 19;
 my $off_peak_end = 7;
@@ -9,7 +10,38 @@ my $xmrig_path = "./xmrig";
 #19:00 - midnight - 11:00 is off peak
 #weekends is off peak by default
 
+my $max_temp = 27;
+my $sensor_to_home_bias = 3;
+
+sub if_temp_too_high {
+	my $socket = new IO::Socket::INET (   
+	PeerAddr => '192.168.1.185',   
+	PeerPort => '48910',   
+	Proto => 'tcp',   
+	);   
+	die "Could not create socket: $!n" unless $socket;
+
+	my $data = "temp";
+	chomp $data;
+	print $socket $data;
+	my $buffer = "";
+	$socket->recv($buffer, 1024);
+	close $socket;
+	
+	my $temp = $buffer - $sensor_to_home_bias;
+	if ($temp > $max_temp) {
+		print "Too hot, we are at $temp\n";
+		return 1;
+	}
+	return 0;
+}
+
 sub should_run {
+	# if too warm the dont run
+	if(if_temp_too_high()) {
+		return 0;
+	}
+
 	my $now = shift @_;
 	my $run = 0;
 	my $day = `date '+%A' -d \@$now`;
