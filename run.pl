@@ -31,6 +31,9 @@ sub if_temp_too_high {
 	$socket->recv($buffer, 1024);
 	close $socket;
 	
+	if($buffer == "") {
+		return 0;
+	}
 	my $temp = $buffer - $sensor_to_home_bias;
 	if ($temp > $max_temp) {
 		print "Too hot, we are at $temp\n";
@@ -122,6 +125,9 @@ while(1) {
 	print "Now is $now, xmrig running at $xmrig_ps\n";
 	if($xmrig_ps == -1) {
 		exit;
+	}
+	if($xmrig_ps == -2) {
+		$run = 0;
 	}
 	sleep(10);
 }
