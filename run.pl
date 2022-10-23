@@ -31,7 +31,8 @@ sub if_temp_too_high {
 	$socket->recv($buffer, 1024);
 	close $socket;
 	
-	if($buffer == "") {
+	if($buffer eq "") {
+		print "buffer is empty, maybe it just during midnight\n";
 		return 0;
 	}
 	my $temp = $buffer - $sensor_to_home_bias;
