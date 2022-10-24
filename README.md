@@ -26,7 +26,9 @@ my $off_peak_end = 7;  # 7am, nighttime cheap rate is over
 
 # temperature control
 if the temp is too high, then it will pause mining. My setup expects a socket server sitting at
-	PeerAddr => '192.168.1.185',   
-	PeerPort => '48910',   
- Where write anything to the server would return a float. The bias is just adjust the value from sensor compared to my thermal stat.
+```
+PeerAddr => '192.168.1.185',   
+PeerPort => '48910',   
+```
+Where write "temp" to the server would return a float. The bias is just adjust the value from sensor compared to my thermal stat.
  
