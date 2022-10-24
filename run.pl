@@ -10,7 +10,7 @@ my $xmrig_path = "./xmrig";
 #19:00 - midnight - 11:00 is off peak
 #weekends is off peak by default
 
-my $max_temp = 27;
+my $max_temp = 26;
 my $sensor_to_home_bias = 3;
 
 sub if_temp_too_high {
