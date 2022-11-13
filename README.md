@@ -15,9 +15,15 @@ Righ now the way it is coded is that we only mine during off-peak.
 ./gen_config_first_name.pl # will generate a clean config
 ```
 modify wallet address to yours, current is my NiceHash BTC
+
+modify your root crontab via
 ```
-sudo ./run.pl 
+sudo crontab -e
+# inside crontab, do something like this
+*/5 * * * * /home/wyatt/PeakPause/cron_run.pl > /home/wyatt/PeakPause/cron_run.log
 ```
+
+The script will run every 5 minutes and check if miner should start or stop
 
 You could download and compile xmrig yourself + modify TOU settings
 
