@@ -3,15 +3,19 @@
 use strict;
 use warnings;
 use IO::Socket;
+use File::Basename;
+my $dirname = dirname(__FILE__);
+print "Dir name: $dirname\n";
 
 my $off_peak_start = 19;
 my $off_peak_end = 7;
-my $xmrig_path = "./xmrig";
+my $xmrig_path = `readlink -f $dirname/xmrig`; chomp $xmrig_path;
+print "Resolved xmrig path $xmrig_path\n";
 #19:00 - midnight - 11:00 is off peak
 #weekends is off peak by default
 
-my $max_temp = 26;
-my $sensor_to_home_bias = 3;
+my $max_temp = 24;
+my $sensor_to_home_bias = 1;
 
 sub if_temp_too_high {
 	my $socket = new IO::Socket::INET (   
@@ -95,7 +99,7 @@ if(should_run($now)) {
 		print "Restart the process\n";
 		my $xmrig = fork();
 		if($xmrig == 0) {
-        		`$xmrig_path`;
+        		`$xmrig_path &`;
         		exit;
 		}
 		print "Restarted process: $xmrig\n";
