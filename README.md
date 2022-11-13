@@ -32,7 +32,7 @@ my $off_peak_start = 19; # this is the afternoon when offpeak starts
 my $off_peak_end = 7;  # 7am, nighttime cheap rate is over
 ```
 
-# temperature control
+# Temperature control
 if the temp is too high, then it will pause mining. My setup expects a socket server sitting at
 ```
 PeerAddr => '192.168.1.185',   
