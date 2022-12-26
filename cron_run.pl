@@ -15,7 +15,7 @@ print "Resolved xmrig path $xmrig_path\n";
 #weekends is off peak by default
 
 my $max_temp = 26.5;
-my $sensor_to_home_bias = 2;
+my $sensor_to_home_bias = 1;
 
 sub if_temp_too_high {
 	my $socket = new IO::Socket::INET (   
