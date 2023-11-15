@@ -10,7 +10,7 @@ print "Dir name: $dirname\n";
 my $on_peak_temp = 20;
 my $mid_peak_temp = 25;
 my $weekend_off_peak_temp = 26;
-my $ulo = 27;
+my $ulo = 28;
 
 my %hour_map_week_day = (
 	0 => $ulo,
