@@ -1,0 +1,1 @@
+#*/5 * * * * MY_HOSTNAME=$(hostname) && /mnt/pve/nfs0/PeakPause_5900X/cron_run.pl >> /mnt/pve/nfs0/PeakPause_5900X/cron_run.$MY_HOSTNAME.log
