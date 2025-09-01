@@ -69,13 +69,13 @@ def test_ultra_low_preference():
         print("\n⚠️  Some ultra-low periods were not approved")
 
 def test_weekend_preference():
-    """Test weekend off-peak preference without temperature"""
-    print("\n🏖️  Weekend Off-Peak Preference Test")
-    print("=" * 45)
+    """Test weekend behavior without temperature (should be blocked now)"""
+    print("\n🏖️  Weekend Behavior Test (No Temperature)")
+    print("=" * 50)
     
     controller = PeakPause()
     
-    # Test weekend day times (7 AM - 11 PM)
+    # Test weekend day times (7 AM - 11 PM) - should now be blocked
     weekend_times = [
         datetime(2025, 9, 6, 8, 0),    # Saturday 8 AM
         datetime(2025, 9, 6, 12, 0),   # Saturday 12 PM
@@ -85,20 +85,20 @@ def test_weekend_preference():
         datetime(2025, 9, 7, 15, 0),   # Sunday 3 PM
     ]
     
-    all_approved = True
+    all_blocked = True
     for test_time in weekend_times:
         should_run, reason = controller.should_mine(test_time)
-        if not should_run:
-            all_approved = False
+        if should_run:
+            all_blocked = False
         
         status_icon = "✅" if should_run else "❌"
         day_time = test_time.strftime("%A %I:%M %p")
         print(f"{status_icon} {day_time:18} | {reason}")
     
-    if all_approved:
-        print("\n🎉 All weekend off-peak periods approved for mining (as expected)")
+    if all_blocked:
+        print("\n✅ All weekend periods correctly blocked without temperature (ULO only policy)")
     else:
-        print("\n⚠️  Some weekend periods were not approved")
+        print("\n⚠️  Some weekend periods were not blocked")
 
 def main():
     """Run all tests"""
@@ -114,10 +114,10 @@ def main():
         print("\n" + "=" * 60)
         print("💡 Key Logic:")
         print("   ✅ Ultra-low (11 PM - 7 AM): Always mine at 2.8¢/kWh")
-        print("   ✅ Weekend off-peak (Sat/Sun 7 AM - 11 PM): Always mine at 7.6¢/kWh") 
-        print("   ⚠️  Mid-peak weekdays: Conservative without temperature")
-        print("   ❌ On-peak weekdays: Blocked by policy (28.4¢/kWh too expensive)")
-        print("\n🎯 This ensures maximum profit during cheapest electricity periods!")
+        print("   ❌ All other periods: Blocked without temperature sensor") 
+        print("   🛡️  Conservative approach: Only ULO when no temp available")
+        print("   🌡️  With temperature: Normal rate-based thresholds apply")
+        print("\n🎯 This ensures safe operation and maximum savings during cheapest period!")
         
     except Exception as e:
         print(f"❌ Test error: {e}")

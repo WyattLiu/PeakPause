@@ -17,6 +17,36 @@ fi
 
 # Make sure cron script is executable
 chmod +x "$CRON_SCRIPT"
+chmod +x "$SCRIPT_DIR/peakpause_cron_simple.py"
+
+echo "📋 Choose cron script version:"
+echo "1. Smart cron (auto-detects virtual environment)"
+echo "2. Simple cron (requires explicit venv path)"
+read -p "Choose version (1-2, default: 1): " cron_version
+
+case ${cron_version:-1} in
+    1)
+        CRON_SCRIPT="$SCRIPT_DIR/peakpause_cron.py"
+        CRON_ENTRY="*/5 * * * * $CRON_SCRIPT >> $CRON_LOG 2>&1"
+        echo "📦 Using smart cron script"
+        ;;
+    2)
+        VENV_PYTHON="$SCRIPT_DIR/venv/bin/python3"
+        if [ -f "$VENV_PYTHON" ]; then
+            CRON_SCRIPT="$SCRIPT_DIR/peakpause_cron_simple.py"
+            CRON_ENTRY="*/5 * * * * $VENV_PYTHON $CRON_SCRIPT >> $CRON_LOG 2>&1"
+            echo "📦 Using simple cron script with venv"
+        else
+            echo "❌ Virtual environment not found at $VENV_PYTHON"
+            echo "💡 Run ./setup_venv.sh first"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "❌ Invalid choice"
+        exit 1
+        ;;
+esac
 
 # Check if crontab exists and backup
 BACKUP_FILE="$SCRIPT_DIR/crontab_backup_$(date +%Y%m%d_%H%M%S)"
@@ -65,7 +95,7 @@ else
 fi
 
 # Add PeakPause cron job (runs every 5 minutes)
-CRON_ENTRY="*/5 * * * * $CRON_SCRIPT >> $CRON_LOG 2>&1"
+# CRON_ENTRY is set above based on chosen version
 
 if [ -n "$NEW_CRON" ]; then
     # Add to existing crontab
@@ -80,6 +110,7 @@ echo ""
 echo "📋 Cron job details:"
 echo "   Schedule: Every 5 minutes"
 echo "   Script: $CRON_SCRIPT"
+echo "   Entry: $CRON_ENTRY"
 echo "   Log file: $CRON_LOG"
 echo ""
 echo "🔍 Verify installation:"

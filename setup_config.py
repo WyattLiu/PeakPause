@@ -10,7 +10,11 @@ import os
 from pathlib import Path
 
 def get_cpu_info():
-    """Get CPU information for worker naming"""
+    """Get CPU informati    print("📝 Configuration Summary:")
+    print(f"   💰 Wallet: 3EdDNCU8nDx2bidh1DjJ8fjqgQCpg3WrDZ")
+    print(f"   🏊 Pool: 192.168.1.149:3333 (local proxy)")
+    print(f"   👤 Worker: {worker_name}")
+    print(f"   🌡️  Temperature: Socket server (192.168.1.185:48910)")r worker naming"""
     import subprocess
     import re
     
@@ -117,7 +121,7 @@ def generate_xmrig_config():
             {
                 "algo": None,
                 "coin": "monero",
-                "url": "192.168.1.207:3333",  # Local mining proxy
+                "url": "192.168.1.149:3333",  # Local mining proxy
                 "user": f"3EdDNCU8nDx2bidh1DjJ8fjqgQCpg3WrDZ.{worker_name}",
                 "pass": "x",
                 "rig-id": worker_name,

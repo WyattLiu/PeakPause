@@ -19,6 +19,7 @@ A smart cryptocurrency mining controller that optimizes mining operations based 
 ### ⚙️ Intelligent Mining Policy
 - Automatically avoids expensive peak hours
 - Temperature-based safety controls
+- **Low CPU Priority**: Mining runs with `nice 19` (lowest priority)
 - Configurable profit margin thresholds
 - Clean process management
 
@@ -186,7 +187,7 @@ done
 
 ### Pre-configured Settings
 - **Wallet**: `3EdDNCU8nDx2bidh1DjJ8fjqgQCpg3WrDZ` (NiceHash BTC)
-- **Pool**: `192.168.1.207:3333` (local mining proxy)
+- **Pool**: `192.168.1.149:3333` (local mining proxy)
 - **Temperature**: Socket server at `192.168.1.185:48910`
 
 ### Worker Identification

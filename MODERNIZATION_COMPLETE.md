@@ -17,7 +17,7 @@
 - **Multi-machine ready** - Unique names across your farm
 
 #### ✅ **Pre-configured for Your Setup**
-- **Local mining proxy**: `192.168.1.207:3333` ✓
+- **Local mining proxy**: `192.168.1.149:3333` ✓
 - **NiceHash wallet**: `3EdDNCU8nDx2bidh1DjJ8fjqgQCpg3WrDZ` ✓
 - **Temperature server**: `192.168.1.185:48910` ✓
 - **No manual config needed** for basic deployment

@@ -300,10 +300,10 @@ class MiningController:
             return True
         
         try:
-            # Start mining process in background
+            # Start mining process in background with low priority (nice 19)
             with open(self.log_file, 'a') as log_f:
                 process = subprocess.Popen([
-                    self.executable, '--config', self.config_file
+                    'nice', '-n', '19', self.executable, '--config', self.config_file
                 ], stdout=log_f, stderr=log_f)
             
             self.process_pid = process.pid
@@ -399,17 +399,13 @@ class PeakPause:
         temp_available = temp is not None
         
         if not temp_available:
-            # No temperature reading - use different logic based on rate period
+            # No temperature reading - only mine during ultra-low rate period for safety
             if period == RatePeriod.ULTRA_LOW:
-                # Always mine during ultra-low rate period (2.8¢/kWh) - cheapest electricity
-                return True, f"Mining approved: {period.value} at {rate}¢/kWh (no temp sensor, ultra-low rate)"
-            elif period == RatePeriod.WEEKEND_OFF_PEAK:
-                # Mine during weekend off-peak (7.6¢/kWh) - reasonable rate
-                return True, f"Mining approved: {period.value} at {rate}¢/kWh (no temp sensor, weekend off-peak)"
+                # Only mine during ultra-low rate period (2.8¢/kWh) - cheapest electricity
+                return True, f"Mining approved: {period.value} at {rate}¢/kWh (no temp sensor, ULO only)"
             else:
-                # Be conservative during mid-peak and on-peak without temperature
-                logging.warning("No temperature reading available during expensive rate period")
-                temp = 22.0  # Conservative assumption for threshold checking
+                # Be conservative during all other periods without temperature
+                return False, f"Mining blocked: {period.value} at {rate}¢/kWh (no temp sensor, ULO only policy)"
         else:
             temp = float(temp)
         
@@ -436,8 +432,18 @@ class PeakPause:
         temp_status = f"temp {temp:.1f}°C" if temp_available else "no temp sensor"
         return True, f"Mining approved: {period.value} at {rate}¢/kWh, {temp_status}"
     
-    def run_once(self) -> None:
+    def run_once(self, force_mining: bool = False) -> None:
         """Single execution cycle"""
+        if force_mining:
+            # Force mining regardless of rates or temperature
+            is_running = self.mining_controller.is_running()
+            if not is_running:
+                logging.info("FORCE MODE: Starting mining regardless of conditions")
+                self.mining_controller.start_mining()
+            else:
+                logging.info("FORCE MODE: Mining already running")
+            return
+        
         should_run, reason = self.should_mine()
         is_running = self.mining_controller.is_running()
         
@@ -475,6 +481,7 @@ def main():
     parser.add_argument("--continuous", action="store_true", help="Run continuous monitoring")
     parser.add_argument("--interval", type=int, default=300, help="Check interval in seconds")
     parser.add_argument("--test", action="store_true", help="Test current conditions")
+    parser.add_argument("--force", action="store_true", help="Force mining to start regardless of conditions")
     
     args = parser.parse_args()
     
@@ -499,6 +506,10 @@ def main():
         
     elif args.continuous:
         controller.run_continuous(args.interval)
+    elif args.force:
+        print("🚨 FORCE MODE: Starting mining regardless of rates or temperature")
+        controller.run_once(force_mining=True)
+        print("✅ Force mining command executed")
     else:
         controller.run_once()
 
