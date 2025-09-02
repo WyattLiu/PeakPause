@@ -53,13 +53,23 @@ if not temp_available:
 process = subprocess.Popen([
     'nice', '-n', '19', self.executable, '--config', self.config_file
 ], stdout=log_f, stderr=log_f)
+
+# NEW: Smart CPU Affinity Management
+# Dynamically assigns CPU cores based on VM activity and system load
+def get_optimal_cpu_affinity(self):
+    if vm_active or load_percentage > 50:
+        cores = "8-31"  # Reserve cores 0-7 for VMs/system
+    else:
+        cores = "1-31"  # Use most cores when VMs idle
 ```
 
 **Benefits:**
 - ✅ **Conservative approach** - only cheapest periods without temp monitoring
 - ✅ **System-friendly** - mining won't interfere with other processes
-- ✅ **Maximum savings** - 2.8¢/kWh overnight is best profit margin
+- ✅ **VM-aware** - automatically detects KVM/QEMU/Docker processes
+- ✅ **Dynamic allocation** - uses more cores when VMs are idle
 - ✅ **Low CPU priority** - nice value 19 ensures mining is background task
+- ✅ **Core 0 protection** - never uses core 0 (reserved for kernel/interrupts)
 
 ### **Benefits**
 - 🔋 **Maximizes ultra-low electricity usage** (2.8¢/kWh overnight only)

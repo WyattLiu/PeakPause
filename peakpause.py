@@ -261,6 +261,77 @@ class MiningController:
         self.log_file = config["log_file"]
         self.process_pid = None
     
+    def get_optimal_cpu_settings(self) -> tuple[str, int]:
+        """Determine optimal CPU cores and thread count based on system load and VM activity"""
+        try:
+            # Get system load average
+            with open('/proc/loadavg', 'r') as f:
+                load_avg = float(f.read().split()[0])  # 1-minute load average
+            
+            # Get number of CPU cores
+            cpu_count = os.cpu_count() or 32
+            
+            # Calculate load percentage
+            load_percentage = (load_avg / cpu_count) * 100
+            
+            # Check for VM processes (common VM process names)
+            vm_processes = ['qemu', 'kvm', 'virtualbox', 'vmware', 'docker', 'libvirt']
+            vm_active = False
+            
+            try:
+                result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+                if result.returncode == 0:
+                    ps_output = result.stdout.lower()
+                    for vm_proc in vm_processes:
+                        if vm_proc in ps_output and 'grep' not in ps_output:
+                            vm_active = True
+                            break
+            except Exception:
+                pass  # Fallback to load-based decision
+            
+            # Decision logic for CPU affinity and thread count
+            if vm_active or load_percentage > 50:
+                # Conservative: Reserve cores 0-7 for system/VMs, use 8-31 for mining, 16 threads
+                cores = f"8-{cpu_count-1}" if cpu_count > 8 else "1-3"
+                threads = 16  # Conservative thread count when VMs are active
+                reason = f"VMs active or high load ({load_percentage:.1f}%) - using 16 threads"
+            else:
+                # Aggressive: Use ALL cores 0-31 when VMs are idle, max threads
+                cores = f"0-{cpu_count-1}" if cpu_count > 1 else "0"
+                threads = 32  # Maximum hashrate when VMs are idle
+                reason = f"Low load ({load_percentage:.1f}%), VMs idle - using 32 threads, all cores"
+            
+            logging.info(f"CPU settings: {cores} cores, {threads} threads - {reason}")
+            return cores, threads
+            
+        except Exception as e:
+            logging.warning(f"Failed to detect optimal CPU settings: {e}")
+            # Safe fallback: conservative cores and threads when detection fails
+            cpu_count = os.cpu_count() or 32
+            fallback_cores = f"8-{cpu_count-1}" if cpu_count > 8 else "1-3"
+            return fallback_cores, 16
+    
+    def get_thread_count_for_cores(self, cores_range: str) -> int:
+        """Calculate optimal thread count based on core range"""
+        try:
+            if '-' in cores_range:
+                start, end = map(int, cores_range.split('-'))
+                core_count = end - start + 1
+            else:
+                core_count = len([int(c.strip()) for c in cores_range.split(',')])
+            
+            # For RandomX, typically 1 thread per physical core is optimal
+            # Since we have hyperthreading (32 logical cores on 16 physical),
+            # we'll use half the logical cores to avoid hyperthreading competition
+            thread_count = max(1, core_count // 2)
+            
+            logging.info(f"Using {thread_count} threads for {core_count} cores")
+            return thread_count
+            
+        except Exception as e:
+            logging.warning(f"Failed to calculate thread count: {e}")
+            return 8  # Safe fallback
+    
     def is_running(self) -> bool:
         """Check if mining process is running"""
         pid = self.get_mining_pid()
@@ -300,11 +371,17 @@ class MiningController:
             return True
         
         try:
-            # Start mining process in background with low priority (nice 19)
-            with open(self.log_file, 'a') as log_f:
-                process = subprocess.Popen([
-                    'nice', '-n', '19', self.executable, '--config', self.config_file
-                ], stdout=log_f, stderr=log_f)
+            # Get optimal CPU settings based on current system load and VM activity
+            cpu_cores, thread_count = self.get_optimal_cpu_settings()
+            
+            # Start mining with XMRig native CPU affinity, thread control, and logging
+            process = subprocess.Popen([
+                'nice', '-n', '19', 
+                self.executable, '--config', self.config_file,
+                '--threads', str(thread_count),
+                '--cpu-affinity', cpu_cores,
+                '--log-file', self.log_file
+            ])
             
             self.process_pid = process.pid
             logging.info(f"Started mining process: PID {self.process_pid}")
