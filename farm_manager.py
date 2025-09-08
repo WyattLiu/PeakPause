@@ -335,7 +335,8 @@ class FarmManager:
             "peakpause.py",
             "peakpause_config.json", 
             "template_config.json",
-            "requirements.txt"
+            "requirements.txt",
+            "xmrig_config.json"
         ]
         
         # Create requirements.txt if it doesn't exist
@@ -350,7 +351,10 @@ class FarmManager:
         
         # Copy xmrig binary if it exists
         if os.path.exists("xmrig"):
-            subprocess.run(['cp', '-r', 'xmrig', package_dir])
+            os.makedirs(f"{package_dir}/xmrig", exist_ok=True)
+            subprocess.run(['cp', 'xmrig', f'{package_dir}/xmrig/xmrig'])
+            # Make sure it's executable
+            os.chmod(f"{package_dir}/xmrig/xmrig", 0o755)
         
         # Create install script - will be customized per host during deployment
         install_script_template = """#!/bin/bash
@@ -620,6 +624,12 @@ echo "Test with: cd $INSTALL_DIR && ./run_peakpause.sh --test"
         # Set worker name to hostname
         if "pool_config" in host_config:
             host_config["pool_config"]["worker"] = hostname
+        
+        # Fix mining paths to be relative to deployment directory
+        if "mining" in host_config:
+            host_config["mining"]["executable"] = "./xmrig/xmrig"
+            host_config["mining"]["config_file"] = "./xmrig_config.json"
+            host_config["mining"]["log_file"] = "./xmrig.log"
         
         # Ensure log file is relative path for remote hosts
         if "logging" in host_config:
