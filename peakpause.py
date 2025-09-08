@@ -70,11 +70,11 @@ class PeakPauseConfig:
                 "log_file": "./xmrig.log"
             },
             "temperature": {
-                "source": "socket",  # socket, homekit, http, system
+                "source": "http",  # Use HTTP API as default
                 "socket_host": "192.168.1.185",
                 "socket_port": 48910,
                 "homekit_url": "",
-                "http_url": "",
+                "http_url": "http://192.168.1.149:3000/api/temperature/latest",
                 "bias": 0.0,
                 "thresholds": {
                     "ultra_low": 30.0,
@@ -170,7 +170,7 @@ class TemperatureMonitor:
             return None
     
     def _get_http_temperature(self) -> Optional[float]:
-        """Get temperature from HTTP API"""
+        """Get temperature from HTTP API - returns minimum if multiple sensors"""
         url = self.config.get("http_url")
         if not url:
             return None
@@ -182,12 +182,46 @@ class TemperatureMonitor:
             # Try JSON first
             try:
                 data = response.json()
-                temp = float(data.get("temperature", data.get("temp", 0)))
+                
+                # Handle your specific API format
+                if data.get("success") and "data" in data and len(data["data"]) > 0:
+                    # Extract temperatures from all devices in the data array
+                    temperatures = []
+                    device_names = []
+                    
+                    for device_data in data["data"]:
+                        if "temperature" in device_data:
+                            temp = float(device_data.get("temperature", 0))
+                            device_name = device_data.get("device_name", "Unknown Device")
+                            temperatures.append(temp)
+                            device_names.append(f"{device_name}({temp}°C)")
+                    
+                    if temperatures:
+                        # Take the minimum temperature for safety (most conservative approach)
+                        min_temp = min(temperatures)
+                        
+                        if len(temperatures) > 1:
+                            logging.info(f"Multiple sensors: {', '.join(device_names)} → Using minimum: {min_temp}°C")
+                        else:
+                            logging.info(f"Temperature from {device_names[0]}")
+                        
+                        return min_temp + self.bias
+                    else:
+                        logging.warning("No temperature data found in API response")
+                        return None
+                        
+                else:
+                    # Fallback to generic JSON format
+                    temp = float(data.get("temperature", data.get("temp", 0)))
+                    logging.info(f"Temperature from HTTP API: {temp}°C")
+                    return temp + self.bias
+                    
             except json.JSONDecodeError:
                 # Fallback to plain text
                 temp = float(response.text.strip())
+                logging.info(f"Temperature from HTTP API (text): {temp}°C")
+                return temp + self.bias
             
-            return temp + self.bias
         except Exception as e:
             logging.warning(f"HTTP temperature failed: {e}")
             return None
@@ -261,6 +295,73 @@ class MiningController:
         self.log_file = config["log_file"]
         self.process_pid = None
     
+    def analyze_vm_activity(self) -> tuple[bool, str]:
+        """Analyze VM activity level to determine if VMs are actively being used"""
+        try:
+            result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+            if result.returncode != 0:
+                return False, "ps command failed"
+            
+            vm_processes = []
+            lines = result.stdout.split('\n')
+            
+            for line in lines:
+                line_lower = line.lower()
+                if any(vm in line_lower for vm in ['qemu', 'kvm']) and 'grep' not in line:
+                    parts = line.split()
+                    if len(parts) >= 11 and '/usr/bin/kvm' in line:
+                        try:
+                            cpu_usage = float(parts[2])
+                            mem_usage = float(parts[3])
+                            vm_processes.append({
+                                'cpu': cpu_usage,
+                                'memory': mem_usage,
+                                'command': ' '.join(parts[10:])
+                            })
+                        except (ValueError, IndexError):
+                            continue
+            
+            if not vm_processes:
+                return False, "No VMs detected"
+            
+            # Analyze VM activity levels
+            active_vms = []
+            idle_vms = []
+            
+            for vm in vm_processes:
+                # Thresholds for "active" usage
+                cpu_threshold = 50.0    # > 50% CPU = active
+                memory_threshold = 20.0  # > 20% memory = significant workload
+                
+                vm_id = "Unknown"
+                if "-id " in vm['command']:
+                    try:
+                        id_index = vm['command'].find("-id ") + 4
+                        vm_id = vm['command'][id_index:].split()[0]
+                    except:
+                        pass
+                
+                is_active = (vm['cpu'] > cpu_threshold or vm['memory'] > memory_threshold)
+                
+                if is_active:
+                    active_vms.append(f"VM{vm_id}({vm['cpu']:.1f}%CPU/{vm['memory']:.1f}%MEM)")
+                else:
+                    idle_vms.append(f"VM{vm_id}({vm['cpu']:.1f}%CPU/{vm['memory']:.1f}%MEM)")
+            
+            # Decision logic
+            if active_vms:
+                reason = f"Active VMs: {', '.join(active_vms)}"
+                if idle_vms:
+                    reason += f" | Idle: {', '.join(idle_vms)}"
+                return True, reason
+            else:
+                reason = f"All VMs idle: {', '.join(idle_vms)}"
+                return False, reason
+                
+        except Exception as e:
+            logging.warning(f"VM activity analysis failed: {e}")
+            return False, "Analysis failed"
+
     def get_optimal_cpu_settings(self) -> tuple[str, int]:
         """Determine optimal CPU cores and thread count based on system load and VM activity"""
         try:
@@ -268,48 +369,54 @@ class MiningController:
             with open('/proc/loadavg', 'r') as f:
                 load_avg = float(f.read().split()[0])  # 1-minute load average
             
-            # Get number of CPU cores
-            cpu_count = os.cpu_count() or 32
+            # Get number of CPU cores dynamically
+            cpu_count = os.cpu_count() or 8  # Default to 8 if detection fails
             
             # Calculate load percentage
             load_percentage = (load_avg / cpu_count) * 100
             
-            # Check for VM processes (common VM process names)
-            vm_processes = ['qemu', 'kvm', 'virtualbox', 'vmware', 'docker', 'libvirt']
-            vm_active = False
-            
-            try:
-                result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
-                if result.returncode == 0:
-                    ps_output = result.stdout.lower()
-                    for vm_proc in vm_processes:
-                        if vm_proc in ps_output and 'grep' not in ps_output:
-                            vm_active = True
-                            break
-            except Exception:
-                pass  # Fallback to load-based decision
+            # Enhanced VM activity detection
+            vm_active, vm_reason = self.analyze_vm_activity()
             
             # Decision logic for CPU affinity and thread count
             if vm_active or load_percentage > 50:
-                # Conservative: Reserve cores 0-7 for system/VMs, use 8-31 for mining, 16 threads
-                cores = f"8-{cpu_count-1}" if cpu_count > 8 else "1-3"
-                threads = 16  # Conservative thread count when VMs are active
-                reason = f"VMs active or high load ({load_percentage:.1f}%) - using 16 threads"
+                # Conservative: Use only half the cores when VMs are active
+                # Reserve first quarter for system, use middle half for mining
+                quarter_cores = max(1, cpu_count // 4)
+                start_core = quarter_cores
+                end_core = quarter_cores + (cpu_count // 2) - 1
+                
+                # Ensure we don't exceed available cores
+                end_core = min(end_core, cpu_count - 1)
+                
+                if start_core <= end_core:
+                    cores = f"{start_core}-{end_core}"
+                    available_cores = end_core - start_core + 1
+                else:
+                    # Fallback for very small CPU counts
+                    cores = f"{max(1, cpu_count // 2)}-{cpu_count - 1}"
+                    available_cores = cpu_count // 2
+                
+                # Thread count: half of available cores (accounting for hyperthreading)
+                threads = max(1, available_cores // 2) if available_cores >= 2 else available_cores
+                
+                reason = f"Conservative mode: {vm_reason} | Load: {load_percentage:.1f}% | Using {available_cores}/{cpu_count} cores"
             else:
-                # Aggressive: Use ALL cores 0-31 when VMs are idle, max threads
-                cores = f"0-{cpu_count-1}" if cpu_count > 1 else "0"
-                threads = 32  # Maximum hashrate when VMs are idle
-                reason = f"Low load ({load_percentage:.1f}%), VMs idle - using 32 threads, all cores"
+                # Aggressive: Use ALL cores when VMs are idle
+                cores = f"0-{cpu_count-1}"
+                threads = cpu_count  # Maximum threads when VMs are idle
+                reason = f"Full hashrate mode: {vm_reason} | Load: {load_percentage:.1f}% | Using all {cpu_count} cores"
             
             logging.info(f"CPU settings: {cores} cores, {threads} threads - {reason}")
             return cores, threads
             
         except Exception as e:
             logging.warning(f"Failed to detect optimal CPU settings: {e}")
-            # Safe fallback: conservative cores and threads when detection fails
-            cpu_count = os.cpu_count() or 32
-            fallback_cores = f"8-{cpu_count-1}" if cpu_count > 8 else "1-3"
-            return fallback_cores, 16
+            # Safe fallback: use half the cores conservatively
+            cpu_count = os.cpu_count() or 8
+            half_cores = max(1, cpu_count // 2)
+            fallback_cores = f"{half_cores}-{cpu_count - 1}"
+            return fallback_cores, max(1, half_cores // 2)
     
     def get_thread_count_for_cores(self, cores_range: str) -> int:
         """Calculate optimal thread count based on core range"""
