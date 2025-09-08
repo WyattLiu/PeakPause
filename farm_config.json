@@ -1,0 +1,31 @@
+{
+  "ssh_user": "root",
+  "ssh_key": "~/.ssh/id_rsa",
+  "remote_path": "~/mining",
+  "hosts": [
+    {
+      "ip": "192.168.1.157",
+      "ssh_user": "root",
+      "ssh_key": "~/.ssh/id_rsa",
+      "name": "truenas",
+      "remote_path": "~/mining",
+      "deployment": {
+        "install_dependencies": false,
+        "use_system_python": true,
+        "setup_cron": true,
+        "start_mining": false
+      }
+    }
+  ],
+  "deployment": {
+    "create_user": false,
+    "install_dependencies": true,
+    "use_system_python": false,
+    "setup_cron": true,
+    "start_mining": false
+  },
+  "mining_config": {
+    "pool_address": "192.168.1.149:3333",
+    "temperature_server": "192.168.1.149:3000"
+  }
+}
