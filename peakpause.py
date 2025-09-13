@@ -37,7 +37,7 @@ class TempThresholds:
     """Temperature thresholds for different rate periods"""
     ultra_low: float = 30.0      # Most permissive - cheapest rate
     weekend_off_peak: float = 28.0
-    mid_peak: float = 25.0       # Moderate - medium cost
+    mid_peak: float = 24.0       # Moderate - medium cost
     on_peak: float = 20.0        # Most restrictive - expensive rate
 
 class TemperatureSource(Enum):
@@ -79,7 +79,7 @@ class PeakPauseConfig:
                 "thresholds": {
                     "ultra_low": 30.0,
                     "weekend_off_peak": 28.0,
-                    "mid_peak": 25.0,
+                    "mid_peak": 24.0,
                     "on_peak": 20.0
                 }
             },
